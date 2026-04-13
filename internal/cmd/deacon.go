@@ -539,6 +539,8 @@ func startDeaconSession(t *tmux.Tmux, sessionName, agentOverride string) error {
 		return fmt.Errorf("building startup command: %w", err)
 	}
 
+	startupCmd = config.PrependEnv(startupCmd, config.CloudAPIEnv())
+
 	// Create session with command directly to avoid send-keys race condition.
 	// See: https://github.com/anthropics/gastown/issues/280
 	fmt.Println("Starting Deacon session...")

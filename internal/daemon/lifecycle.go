@@ -510,18 +510,7 @@ func (d *Daemon) getStartCommand(roleConfig *beads.RoleConfig, parsed *ParsedIde
 		Topic:     "lifecycle-restart",
 	}, "Run `gt prime --hook` and begin work.")
 
-	// Build default command using the role-resolved runtime config.
-	// PrependEnv produces "export K=V ... && exec cmd" which is safe for
-	// WaitForCommand/pane_current_command detection: exec replaces the shell,
-	// so tmux sees the agent process, not a shell running exports.
-	defaultEnv := map[string]string{}
-	if runtimeConfig.Session != nil && runtimeConfig.Session.SessionIDEnv != "" {
-		defaultEnv["GT_SESSION_ID_ENV"] = runtimeConfig.Session.SessionIDEnv
-	}
-	config.SanitizeAgentEnv(defaultEnv, map[string]string{})
-	defaultCmd := config.PrependEnv("exec "+runtimeConfig.BuildCommandWithPrompt(prompt), defaultEnv)
-
-	// Polecats and crew need environment variables set in the command
+	// Polecats and crew get full AgentEnv (which includes cloud API vars).
 	if parsed.RoleType == constants.RolePolecat {
 		var sessionIDEnv string
 		if runtimeConfig.Session != nil {
@@ -554,7 +543,15 @@ func (d *Daemon) getStartCommand(roleConfig *beads.RoleConfig, parsed *ParsedIde
 		return config.PrependEnv("exec "+runtimeConfig.BuildCommandWithPrompt(prompt), envVars)
 	}
 
-	return defaultCmd
+	// Build default command for other roles (mayor, deacon, witness, etc.).
+	// Cloud API env vars are prepended so the initial process inherits them;
+	// tmux set-environment only affects subsequently spawned panes.
+	defaultEnv := config.CloudAPIEnv()
+	if runtimeConfig.Session != nil && runtimeConfig.Session.SessionIDEnv != "" {
+		defaultEnv["GT_SESSION_ID_ENV"] = runtimeConfig.Session.SessionIDEnv
+	}
+	config.SanitizeAgentEnv(defaultEnv, map[string]string{})
+	return config.PrependEnv("exec "+runtimeConfig.BuildCommandWithPrompt(prompt), defaultEnv)
 }
 
 // setSessionEnvironment sets environment variables for the tmux session.

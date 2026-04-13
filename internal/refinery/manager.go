@@ -209,6 +209,8 @@ func (m *Manager) Start(foreground bool, agentOverride string) error {
 	// Generate the GASTA run ID for this refinery session.
 	runID := uuid.New().String()
 
+	command = config.PrependEnv(command, config.CloudAPIEnv())
+
 	// Create session with command directly to avoid send-keys race condition.
 	// See: https://github.com/anthropics/gastown/issues/280
 	if err := t.NewSessionWithCommand(sessionID, refineryRigDir, command); err != nil {

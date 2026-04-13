@@ -737,17 +737,9 @@ func resolvePathToSession(path string) (string, error) {
 	return "", fmt.Errorf("cannot parse path '%s' - expected <rig>/<polecat>, <rig>/crew/<name>, <rig>/witness, or <rig>/refinery", path)
 }
 
-// claudeEnvVars lists the Claude-related environment variables to propagate
-// during handoff. These vars aren't inherited by tmux respawn-pane's fresh shell.
-var claudeEnvVars = []string{
-	// Claude API and config
-	"ANTHROPIC_API_KEY",
-	"CLAUDE_CODE_USE_BEDROCK",
-	// AWS vars for Bedrock
-	"AWS_PROFILE",
-	"AWS_REGION",
-	// OTEL telemetry — propagate so Claude keeps sending metrics after handoff
-	// (tmux respawn-pane starts a fresh shell that doesn't inherit these)
+// handoffTelemetryVars lists telemetry env vars to propagate during handoff.
+// Cloud API vars are handled separately via config.CloudAPIEnv().
+var handoffTelemetryVars = []string{
 	"CLAUDE_CODE_ENABLE_TELEMETRY",
 	"OTEL_METRICS_EXPORTER",
 	"OTEL_METRIC_EXPORT_INTERVAL",
@@ -760,10 +752,8 @@ var claudeEnvVars = []string{
 	"OTEL_LOG_TOOL_CONTENT",
 	"OTEL_LOG_USER_PROMPTS",
 	"OTEL_RESOURCE_ATTRIBUTES",
-	// bd telemetry — so `bd` calls inside Claude emit to VictoriaMetrics/Logs
 	"BD_OTEL_METRICS_URL",
 	"BD_OTEL_LOGS_URL",
-	// GT telemetry source vars — needed to recompute derived vars after handoff
 	"GT_OTEL_METRICS_URL",
 	"GT_OTEL_LOGS_URL",
 }
@@ -941,8 +931,10 @@ func buildRestartCommandWithOpts(sessionName string, opts buildRestartCommandOpt
 		envMap["GT_PROCESS_NAMES"] = strings.Join(resolved, ",")
 	}
 
-	// Add Claude-related env vars from current environment
-	for _, name := range claudeEnvVars {
+	for k, v := range config.CloudAPIEnv() {
+		envMap[k] = v
+	}
+	for _, name := range handoffTelemetryVars {
 		if val := os.Getenv(name); val != "" {
 			envMap[name] = val
 		}

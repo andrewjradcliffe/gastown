@@ -194,41 +194,29 @@ func TestCostTierAgents(t *testing.T) {
 		}
 	})
 
-	t.Run("sonnet preset has correct args", func(t *testing.T) {
+	// Model value is env-dependent; parallel subtests can't use t.Setenv,
+	// so just verify structural correctness here.
+	t.Run("sonnet preset has correct default args", func(t *testing.T) {
 		t.Parallel()
 		agents := CostTierAgents(TierEconomy)
 		sonnet := agents["claude-sonnet"]
 		if sonnet.Command != "claude" {
 			t.Errorf("sonnet Command = %q, want %q", sonnet.Command, "claude")
 		}
-		found := false
-		for i, arg := range sonnet.Args {
-			if arg == "--model" && i+1 < len(sonnet.Args) && sonnet.Args[i+1] == "sonnet[1m]" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("sonnet Args %v missing --model sonnet[1m]", sonnet.Args)
+		if _, ok := extractModelArg(sonnet.Args); !ok {
+			t.Errorf("sonnet Args %v missing --model flag", sonnet.Args)
 		}
 	})
 
-	t.Run("haiku preset has correct args", func(t *testing.T) {
+	t.Run("haiku preset has correct default args", func(t *testing.T) {
 		t.Parallel()
 		agents := CostTierAgents(TierEconomy)
 		haiku := agents["claude-haiku"]
 		if haiku.Command != "claude" {
 			t.Errorf("haiku Command = %q, want %q", haiku.Command, "claude")
 		}
-		found := false
-		for i, arg := range haiku.Args {
-			if arg == "--model" && i+1 < len(haiku.Args) && haiku.Args[i+1] == "haiku" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("haiku Args %v missing --model haiku", haiku.Args)
+		if _, ok := extractModelArg(haiku.Args); !ok {
+			t.Errorf("haiku Args %v missing --model flag", haiku.Args)
 		}
 	})
 
@@ -258,6 +246,57 @@ func TestCostTierAgents(t *testing.T) {
 		if groq.Env["ANTHROPIC_API_KEY"] != os.Getenv("GROQ_API_KEY") {
 			t.Errorf("groq-compound ANTHROPIC_API_KEY = %q, want value of GROQ_API_KEY env var", groq.Env["ANTHROPIC_API_KEY"])
 		}
+	})
+}
+
+// extractModelArg returns the value after "--model" in an args slice.
+func extractModelArg(args []string) (string, bool) {
+	for i, arg := range args {
+		if arg == "--model" && i+1 < len(args) {
+			return args[i+1], true
+		}
+	}
+	return "", false
+}
+
+// TestPresetEnvOverrides verifies that claudeSonnetPreset and claudeHaikuPreset
+// respect their respective ANTHROPIC_DEFAULT_*_MODEL env vars.
+// NOT parallel — uses t.Setenv.
+func TestPresetEnvOverrides(t *testing.T) {
+	requireModel := func(t *testing.T, rc *RuntimeConfig, want string) {
+		t.Helper()
+		got, ok := extractModelArg(rc.Args)
+		if !ok {
+			t.Fatal("--model flag not found in preset args")
+		}
+		if got != want {
+			t.Errorf("model = %q, want %q", got, want)
+		}
+	}
+
+	t.Run("sonnet default without env", func(t *testing.T) {
+		t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+		requireModel(t, claudeSonnetPreset(), "sonnet[1m]")
+	})
+
+	t.Run("sonnet respects env override and appends 1m", func(t *testing.T) {
+		t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "my-custom-sonnet")
+		requireModel(t, claudeSonnetPreset(), "my-custom-sonnet[1m]")
+	})
+
+	t.Run("sonnet env override already has 1m suffix", func(t *testing.T) {
+		t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "my-custom-sonnet[1m]")
+		requireModel(t, claudeSonnetPreset(), "my-custom-sonnet[1m]")
+	})
+
+	t.Run("haiku default without env", func(t *testing.T) {
+		t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+		requireModel(t, claudeHaikuPreset(), "haiku")
+	})
+
+	t.Run("haiku respects env override", func(t *testing.T) {
+		t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "my-custom-haiku")
+		requireModel(t, claudeHaikuPreset(), "my-custom-haiku")
 	})
 }
 

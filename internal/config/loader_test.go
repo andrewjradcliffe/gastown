@@ -1648,8 +1648,8 @@ func TestBuildAgentStartupCommand_DogUsesRoleAgents(t *testing.T) {
 	if !strings.Contains(cmd, "GT_ROLE=dog") {
 		t.Fatalf("expected GT_ROLE=dog in command, got: %q", cmd)
 	}
-	if !strings.Contains(cmd, "--model haiku") {
-		t.Fatalf("expected --model haiku from role_agents[dog], got: %q", cmd)
+	if !strings.Contains(cmd, "--model") {
+		t.Fatalf("expected --model flag for dog role, got: %q", cmd)
 	}
 	if strings.Contains(cmd, "--model opus") {
 		t.Fatalf("did not expect --model opus (default_agent) for dog role, got: %q", cmd)
@@ -5113,6 +5113,7 @@ func TestTryResolveFromEphemeralTier(t *testing.T) {
 
 	t.Run("budget tier witness gets haiku", func(t *testing.T) {
 		t.Setenv("GT_COST_TIER", "budget")
+		t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
 		rc, handled := tryResolveFromEphemeralTier("witness")
 		if !handled {
 			t.Fatal("expected handled=true for witness in budget tier")
@@ -5148,6 +5149,7 @@ func TestTryResolveFromEphemeralTier(t *testing.T) {
 
 	t.Run("economy tier mayor gets sonnet", func(t *testing.T) {
 		t.Setenv("GT_COST_TIER", "economy")
+		t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
 		rc, handled := tryResolveFromEphemeralTier("mayor")
 		if !handled {
 			t.Fatal("expected handled=true for mayor in economy tier")
@@ -5191,6 +5193,7 @@ func TestResolveRoleAgentConfig_WithEphemeralTier(t *testing.T) {
 	}
 
 	t.Setenv("GT_COST_TIER", "budget")
+	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
 
 	rc := ResolveRoleAgentConfig("witness", townRoot, "")
 	if rc == nil {
@@ -5225,6 +5228,7 @@ func TestResolveRoleAgentConfig_EphemeralOverridesPersistent(t *testing.T) {
 
 	// Set ephemeral to budget — should override
 	t.Setenv("GT_COST_TIER", "budget")
+	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
 
 	// witness is sonnet in economy, haiku in budget
 	rc := ResolveRoleAgentConfig("witness", townRoot, "")

@@ -121,6 +121,8 @@ func (m *Manager) Start(agentOverride string) error {
 		return fmt.Errorf("building startup command: %w", err)
 	}
 
+	startupCmd = config.PrependEnv(startupCmd, config.CloudAPIEnv())
+
 	// Create session with command directly to avoid send-keys race condition.
 	// See: https://github.com/anthropics/gastown/issues/280
 	if err := t.NewSessionWithCommand(sessionID, deaconDir, startupCmd); err != nil {

@@ -223,24 +223,35 @@ func CostTierAgents(tier CostTier) map[string]*RuntimeConfig {
 }
 
 // claudeSonnetPreset returns a RuntimeConfig for Claude Sonnet.
-// Uses "sonnet[1m]" to enable 1M context window on Max/Team plans.
-// Without the [1m] suffix, --model sonnet resolves to 200K context
-// because the explicit --model flag bypasses Claude Code's built-in
-// plan-based auto-detection that would otherwise enable 1M.
+// Respects ANTHROPIC_DEFAULT_SONNET_MODEL if set, otherwise uses "sonnet[1m]"
+// to enable 1M context window on Max/Team plans. Without the [1m] suffix,
+// --model sonnet resolves to 200K context because the explicit --model flag
+// bypasses Claude Code's built-in plan-based auto-detection.
 func claudeSonnetPreset() *RuntimeConfig {
+	model := os.Getenv("ANTHROPIC_DEFAULT_SONNET_MODEL")
+	if model == "" {
+		model = "sonnet[1m]"
+	} else if !strings.HasSuffix(model, "[1m]") {
+		model += "[1m]"
+	}
 	return &RuntimeConfig{
 		Provider: string(AgentClaude),
 		Command:  "claude",
-		Args:     []string{"--dangerously-skip-permissions", "--model", "sonnet[1m]"},
+		Args:     []string{"--dangerously-skip-permissions", "--model", model},
 	}
 }
 
 // claudeHaikuPreset returns a RuntimeConfig for Claude Haiku.
+// Respects ANTHROPIC_DEFAULT_HAIKU_MODEL if set.
 func claudeHaikuPreset() *RuntimeConfig {
+	model := os.Getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL")
+	if model == "" {
+		model = "haiku"
+	}
 	return &RuntimeConfig{
 		Provider: string(AgentClaude),
 		Command:  "claude",
-		Args:     []string{"--dangerously-skip-permissions", "--model", "haiku"},
+		Args:     []string{"--dangerously-skip-permissions", "--model", model},
 	}
 }
 

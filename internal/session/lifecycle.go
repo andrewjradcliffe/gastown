@@ -188,14 +188,15 @@ func StartSession(t *tmux.Tmux, cfg SessionConfig) (_ *StartResult, retErr error
 		})
 	}
 
-	// Prepend GT_RUN (GASTA run ID) and any extra env vars into the command so
-	// that they are inherited by the initial shell before tmux SetEnvironment runs.
-	extraWithRun := make(map[string]string, len(cfg.ExtraEnv)+1)
+	// Prepend cloud API env vars, GT_RUN, and any extra env vars into the command
+	// so they are inherited by the initial process. tmux set-environment (step 6)
+	// only affects subsequently spawned panes, not the already-running agent.
+	prependEnv := config.CloudAPIEnv()
 	for k, v := range cfg.ExtraEnv {
-		extraWithRun[k] = v
+		prependEnv[k] = v
 	}
-	extraWithRun["GT_RUN"] = runID
-	command = config.PrependEnv(command, extraWithRun)
+	prependEnv["GT_RUN"] = runID
+	command = config.PrependEnv(command, prependEnv)
 
 	// 4. Create tmux session with command.
 	if err := t.NewSessionWithCommand(cfg.SessionID, cfg.WorkDir, command); err != nil {

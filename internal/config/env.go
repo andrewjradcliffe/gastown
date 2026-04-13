@@ -23,6 +23,79 @@ var IdentityEnvVars = []string{
 	"GT_SESSION", "GT_AGENT", "BD_ACTOR", "GIT_AUTHOR_NAME", "BEADS_AGENT_NAME",
 }
 
+// cloudAPIEnvKeys lists cloud API credentials and provider configuration
+// variables forwarded from the parent shell to agent sessions.
+// Used by both AgentEnv (tmux session table) and CloudAPIEnv (command prepend).
+var cloudAPIEnvKeys = []string{
+	// Anthropic API (direct)
+	"ANTHROPIC_API_KEY",
+	"ANTHROPIC_AUTH_TOKEN",
+	"ANTHROPIC_BASE_URL",
+	"ANTHROPIC_CUSTOM_HEADERS",
+
+	// Model selection
+	"ANTHROPIC_MODEL",
+	"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+	"ANTHROPIC_DEFAULT_SONNET_MODEL",
+	"ANTHROPIC_DEFAULT_OPUS_MODEL",
+	"CLAUDE_CODE_SUBAGENT_MODEL",
+
+	// AWS Bedrock
+	"CLAUDE_CODE_USE_BEDROCK",
+	"CLAUDE_CODE_SKIP_BEDROCK_AUTH",
+	"AWS_ACCESS_KEY_ID",
+	"AWS_SECRET_ACCESS_KEY",
+	"AWS_SESSION_TOKEN",
+	"AWS_REGION",
+	"AWS_PROFILE",
+	"AWS_BEARER_TOKEN_BEDROCK",
+	"ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION",
+
+	// Microsoft Foundry
+	"CLAUDE_CODE_USE_FOUNDRY",
+	"CLAUDE_CODE_SKIP_FOUNDRY_AUTH",
+	"ANTHROPIC_FOUNDRY_API_KEY",
+	"ANTHROPIC_FOUNDRY_BASE_URL",
+	"ANTHROPIC_FOUNDRY_RESOURCE",
+
+	// Google Vertex AI
+	"CLAUDE_CODE_USE_VERTEX",
+	"CLAUDE_CODE_SKIP_VERTEX_AUTH",
+	"GOOGLE_APPLICATION_CREDENTIALS",
+	"GOOGLE_CLOUD_PROJECT",
+	"VERTEX_PROJECT",
+	"VERTEX_LOCATION",
+	"VERTEX_REGION_CLAUDE_3_5_HAIKU",
+	"VERTEX_REGION_CLAUDE_3_7_SONNET",
+	"VERTEX_REGION_CLAUDE_4_0_OPUS",
+	"VERTEX_REGION_CLAUDE_4_0_SONNET",
+	"VERTEX_REGION_CLAUDE_4_1_OPUS",
+
+	// Proxy / network
+	"HTTP_PROXY",
+	"HTTPS_PROXY",
+	"NO_PROXY",
+
+	// mTLS
+	"CLAUDE_CODE_CLIENT_CERT",
+	"CLAUDE_CODE_CLIENT_KEY",
+	"CLAUDE_CODE_CLIENT_KEY_PASSPHRASE",
+}
+
+// CloudAPIEnv returns cloud API credentials and provider configuration from the
+// current process environment. These must be prepended into the startup command
+// so the agent process inherits them immediately — tmux set-environment only
+// affects subsequently spawned panes, not the already-running agent process.
+func CloudAPIEnv() map[string]string {
+	env := make(map[string]string)
+	for _, key := range cloudAPIEnvKeys {
+		if val := os.Getenv(key); val != "" {
+			env[key] = val
+		}
+	}
+	return env
+}
+
 // AgentEnvConfig specifies the configuration for generating agent environment variables.
 // This is the single source of truth for all agent environment configuration.
 type AgentEnvConfig struct {
@@ -351,62 +424,8 @@ func AgentEnv(cfg AgentEnvConfig) map[string]string {
 	}
 
 	// Pass through cloud API credentials and provider configuration from the parent shell.
-	// Only variables explicitly listed here are forwarded; all others are blocked for isolation.
-	for _, key := range []string{
-		// Anthropic API (direct)
-		"ANTHROPIC_API_KEY",
-		"ANTHROPIC_AUTH_TOKEN",
-		"ANTHROPIC_BASE_URL",
-		"ANTHROPIC_CUSTOM_HEADERS",
-
-		// Model selection
-		"ANTHROPIC_MODEL",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL",
-		"ANTHROPIC_DEFAULT_OPUS_MODEL",
-		"CLAUDE_CODE_SUBAGENT_MODEL",
-
-		// AWS Bedrock
-		"CLAUDE_CODE_USE_BEDROCK",
-		"CLAUDE_CODE_SKIP_BEDROCK_AUTH",
-		"AWS_ACCESS_KEY_ID",
-		"AWS_SECRET_ACCESS_KEY",
-		"AWS_SESSION_TOKEN",
-		"AWS_REGION",
-		"AWS_PROFILE",
-		"AWS_BEARER_TOKEN_BEDROCK",
-		"ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION",
-
-		// Microsoft Foundry
-		"CLAUDE_CODE_USE_FOUNDRY",
-		"CLAUDE_CODE_SKIP_FOUNDRY_AUTH",
-		"ANTHROPIC_FOUNDRY_API_KEY",
-		"ANTHROPIC_FOUNDRY_BASE_URL",
-		"ANTHROPIC_FOUNDRY_RESOURCE",
-
-		// Google Vertex AI
-		"CLAUDE_CODE_USE_VERTEX",
-		"CLAUDE_CODE_SKIP_VERTEX_AUTH",
-		"GOOGLE_APPLICATION_CREDENTIALS",
-		"GOOGLE_CLOUD_PROJECT",
-		"VERTEX_PROJECT",
-		"VERTEX_LOCATION",
-		"VERTEX_REGION_CLAUDE_3_5_HAIKU",
-		"VERTEX_REGION_CLAUDE_3_7_SONNET",
-		"VERTEX_REGION_CLAUDE_4_0_OPUS",
-		"VERTEX_REGION_CLAUDE_4_0_SONNET",
-		"VERTEX_REGION_CLAUDE_4_1_OPUS",
-
-		// Proxy / network
-		"HTTP_PROXY",
-		"HTTPS_PROXY",
-		"NO_PROXY",
-
-		// mTLS
-		"CLAUDE_CODE_CLIENT_CERT",
-		"CLAUDE_CODE_CLIENT_KEY",
-		"CLAUDE_CODE_CLIENT_KEY_PASSPHRASE",
-	} {
+	// Only variables in cloudAPIEnvKeys are forwarded; all others are blocked for isolation.
+	for _, key := range cloudAPIEnvKeys {
 		if val := os.Getenv(key); val != "" {
 			env[key] = val
 		}

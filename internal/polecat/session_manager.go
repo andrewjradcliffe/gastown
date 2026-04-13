@@ -371,6 +371,9 @@ func (m *SessionManager) Start(polecat string, opts SessionStartOptions) error {
 	if polecatGitBranch != "" {
 		envVarsToInject["GT_BRANCH"] = polecatGitBranch
 	}
+	for k, v := range config.CloudAPIEnv() {
+		envVarsToInject[k] = v
+	}
 	command = config.PrependEnv(command, envVarsToInject)
 
 	// Create session with command directly to avoid send-keys race condition.
