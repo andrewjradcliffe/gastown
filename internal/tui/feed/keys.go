@@ -43,28 +43,28 @@ type KeyMap struct {
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
 		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "up"),
+			key.WithKeys("up", "k", "ctrl+p"),
+			key.WithHelp("↑/k/ctrl+p", "up"),
 		),
 		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "down"),
+			key.WithKeys("down", "j", "ctrl+n"),
+			key.WithHelp("↓/j/ctrl+n", "down"),
 		),
 		PageUp: key.NewBinding(
-			key.WithKeys("pgup", "ctrl+u"),
-			key.WithHelp("pgup", "page up"),
+			key.WithKeys("pgup", "ctrl+u", "alt+v"),
+			key.WithHelp("pgup/alt+v", "page up"),
 		),
 		PageDown: key.NewBinding(
-			key.WithKeys("pgdown", "ctrl+d"),
-			key.WithHelp("pgdn", "page down"),
+			key.WithKeys("pgdown", "ctrl+d", "ctrl+v"),
+			key.WithHelp("pgdn/ctrl+v", "page down"),
 		),
 		Top: key.NewBinding(
-			key.WithKeys("home", "g"),
-			key.WithHelp("g", "top"),
+			key.WithKeys("home", "g", "alt+<"),
+			key.WithHelp("g/alt+<", "top"),
 		),
 		Bottom: key.NewBinding(
-			key.WithKeys("end", "G"),
-			key.WithHelp("G", "bottom"),
+			key.WithKeys("end", "G", "alt+>"),
+			key.WithHelp("G/alt+>", "bottom"),
 		),
 		Tab: key.NewBinding(
 			key.WithKeys("tab"),

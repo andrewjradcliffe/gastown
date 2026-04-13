@@ -121,6 +121,17 @@ type Model struct {
 	mu sync.RWMutex
 }
 
+// newFeedViewport returns a viewport with Emacs navigation keys appended to
+// the default keymap (ctrl+p/n for up/down, alt+v/ctrl+v for page up/down).
+func newFeedViewport(w, h int) viewport.Model {
+	vp := viewport.New(w, h)
+	vp.KeyMap.Up.SetKeys(append(vp.KeyMap.Up.Keys(), "ctrl+p")...)
+	vp.KeyMap.Down.SetKeys(append(vp.KeyMap.Down.Keys(), "ctrl+n")...)
+	vp.KeyMap.PageUp.SetKeys(append(vp.KeyMap.PageUp.Keys(), "alt+v")...)
+	vp.KeyMap.PageDown.SetKeys(append(vp.KeyMap.PageDown.Keys(), "ctrl+v")...)
+	return vp
+}
+
 // NewModel creates a new feed TUI model.
 // The bd parameter provides access to agent beads for health detection.
 func NewModel(bd *beads.Beads) *Model {
@@ -129,10 +140,10 @@ func NewModel(bd *beads.Beads) *Model {
 
 	return &Model{
 		focusedPanel:     PanelTree,
-		treeViewport:     viewport.New(0, 0),
-		convoyViewport:   viewport.New(0, 0),
-		feedViewport:     viewport.New(0, 0),
-		problemsViewport: viewport.New(0, 0),
+		treeViewport:     newFeedViewport(0, 0),
+		convoyViewport:   newFeedViewport(0, 0),
+		feedViewport:     newFeedViewport(0, 0),
+		problemsViewport: newFeedViewport(0, 0),
 		rigs:             make(map[string]*Rig),
 		events:           make([]Event, 0, maxEventHistory),
 		problemAgents:    make([]*ProblemAgent, 0),
@@ -435,6 +446,18 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.viewMode == ViewProblems {
 			return m.selectNextProblem()
 		}
+
+	case key.Matches(msg, m.keys.Top):
+		m.mu.Lock()
+		m.focusedViewport().GotoTop()
+		m.mu.Unlock()
+		return m, nil
+
+	case key.Matches(msg, m.keys.Bottom):
+		m.mu.Lock()
+		m.focusedViewport().GotoBottom()
+		m.mu.Unlock()
+		return m, nil
 	}
 
 	// Pass to focused viewport (under lock to protect from concurrent View)
@@ -452,6 +475,23 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	m.mu.Unlock()
 	return m, cmd
+}
+
+// focusedViewport returns a pointer to the currently focused viewport.
+// Must be called with m.mu held.
+func (m *Model) focusedViewport() *viewport.Model {
+	switch m.focusedPanel {
+	case PanelTree:
+		return &m.treeViewport
+	case PanelConvoy:
+		return &m.convoyViewport
+	case PanelFeed:
+		return &m.feedViewport
+	case PanelProblems:
+		return &m.problemsViewport
+	default:
+		return &m.feedViewport
+	}
 }
 
 // toggleProblemsView switches between activity and problems view
